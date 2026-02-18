@@ -4,6 +4,7 @@ tiktok:
     - "komedi"
     - "mizah"
     - "eğlence"
+    - "komik"
   min_likes: 10000
   max_videos_per_run: 5
   video_duration_max: 180  # saniye
