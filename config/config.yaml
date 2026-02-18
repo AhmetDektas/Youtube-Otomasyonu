@@ -1,0 +1,51 @@
+# TikTok Ayarları
+tiktok:
+  search_hashtags:
+    - "komedi"
+    - "mizah"
+    - "eğlence"
+  min_likes: 10000
+  max_videos_per_run: 5
+  video_duration_max: 180  # saniye
+
+# YouTube Ayarları
+youtube:
+  # Başlık Ayarları
+  title_style: "optimized"  # "optimized" veya "original"
+  title_prefix: ""
+  title_suffix: ""
+  
+  # Açıklama Şablonu
+  description_template: |
+    📱 TikTok'tan en komik videolar burada!
+    
+    {original_title}
+    
+    ━━━━━━━━━━━━━━━━━━━━
+    👍 Beğenmeyi unutma!
+    🔔 Abone ol, daha fazlası için!
+    📤 Arkadaşlarınla paylaş!
+    
+    #shorts #tiktok #komedi #mizah #eğlence
+  
+  # Video Ayarları
+  category_id: "23"  # Comedy
+  privacy_status: "public"  # public, private, unlisted
+  max_uploads_per_day: 6  # YouTube API günlük limiti
+  
+  # Tag'ler (otomatik optimize edilir)
+  tags:
+    - "shorts"
+    - "komedi"
+    - "eğlence"
+    - "tiktok"
+    - "mizah"
+    - "viral"
+    - "türkiye"
+
+# Genel Ayarlar
+general:
+  download_path: "./data/videos"
+  check_interval: 3600  # saniye (1 saat)
+  max_storage_gb: 10
+  video_retention_days: 1  # Videoları 1 gün sonra sil (YouTube'a yüklendikten sonra)
