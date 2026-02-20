@@ -108,3 +108,73 @@ class YouTubeUploader:
         except Exception as e:
             print(f"❌ YouTube yükleme hatası: {str(e)}")
             return None
+
+    def update_video_title(self, video_id, new_title):
+        """YouTube video başlığını güncelle"""
+        try:
+            # Mevcut video bilgilerini al
+            video_response = self.youtube.videos().list(
+                part='snippet',
+                id=video_id
+            ).execute()
+            
+            if not video_response['items']:
+                print(f"❌ Video bulunamadı: {video_id}")
+                return False
+            
+            # Mevcut snippet'i al
+            snippet = video_response['items'][0]['snippet']
+            
+            # Sadece başlığı güncelle
+            snippet['title'] = new_title[:100]  # YouTube limiti
+            
+            # Güncelleme isteği
+            self.youtube.videos().update(
+                part='snippet',
+                body={
+                    'id': video_id,
+                    'snippet': snippet
+                }
+            ).execute()
+            
+            print(f"✅ Başlık güncellendi: {new_title}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Başlık güncelleme hatası: {str(e)}")
+            return False
+    
+    def update_video_description(self, video_id, new_description):
+        """YouTube video açıklamasını güncelle"""
+        try:
+            # Mevcut video bilgilerini al
+            video_response = self.youtube.videos().list(
+                part='snippet',
+                id=video_id
+            ).execute()
+            
+            if not video_response['items']:
+                print(f"❌ Video bulunamadı: {video_id}")
+                return False
+            
+            # Mevcut snippet'i al
+            snippet = video_response['items'][0]['snippet']
+            
+            # Sadece açıklamayı güncelle
+            snippet['description'] = new_description[:5000]  # YouTube limiti
+            
+            # Güncelleme isteği
+            self.youtube.videos().update(
+                part='snippet',
+                body={
+                    'id': video_id,
+                    'snippet': snippet
+                }
+            ).execute()
+            
+            print(f"✅ Açıklama güncellendi")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Açıklama güncelleme hatası: {str(e)}")
+            return False

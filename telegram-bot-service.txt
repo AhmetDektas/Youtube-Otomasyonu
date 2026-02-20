@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram Bot - YouTube Video Yönetimi
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/Youtube-Otomasyonu
+Environment="PATH=/root/Youtube-Otomasyonu/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/root/Youtube-Otomasyonu/venv/bin/python /root/Youtube-Otomasyonu/telegram_bot.py
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

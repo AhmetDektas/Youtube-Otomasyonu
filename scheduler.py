@@ -129,6 +129,14 @@ def run_automation():
                     uploaded_count += 1
                     print(f"🎉 Başarılı! YouTube: {youtube_result['url']}")
                     
+                    # Son video ID'sini kaydet (Telegram bot için)
+                    try:
+                        import json
+                        with open('data/last_video.json', 'w') as f:
+                            json.dump({'video_id': youtube_result['video_id']}, f)
+                    except:
+                        pass
+                    
                     # Telegram bildirimi - video yüklendi
                     telegram.notify_video_uploaded(optimized_title, youtube_result['url'])
                 else:
