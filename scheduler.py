@@ -10,6 +10,7 @@ from src.tiktok_apify_scraper import TikTokApifyScraper
 from src.youtube_uploader import YouTubeUploader
 from src.content_manager import ContentManager
 from src.title_generator import TitleGenerator
+from src.telegram_notifier import TelegramNotifier
 
 
 def run_automation():
@@ -28,6 +29,7 @@ def run_automation():
         uploader = YouTubeUploader(config)
         content_manager = ContentManager()
         title_generator = TitleGenerator(config)
+        telegram = TelegramNotifier()
         
         # İstatistikler
         stats = content_manager.get_stats()
@@ -87,7 +89,11 @@ def run_automation():
                 video_path = scraper.download_video(video_info)
                 if not video_path:
                     content_manager.mark_failed(video_info['url'], "İndirme başarısız")
+                    telegram.notify_error("Video İndirme", f"Video indirilemedi: {video_info['title'][:50]}")
                     continue
+                
+                # Telegram bildirimi - video indirildi
+                telegram.notify_video_downloaded(video_info['title'][:100], video_info['url'])
                 
                 # YouTube'a yükle
                 optimized_title = title_generator.generate_title(
@@ -122,8 +128,12 @@ def run_automation():
                     )
                     uploaded_count += 1
                     print(f"🎉 Başarılı! YouTube: {youtube_result['url']}")
+                    
+                    # Telegram bildirimi - video yüklendi
+                    telegram.notify_video_uploaded(optimized_title, youtube_result['url'])
                 else:
                     content_manager.mark_failed(video_info['url'], "YouTube yükleme başarısız")
+                    telegram.notify_error("YouTube Yükleme", f"Video yüklenemedi: {optimized_title[:50]}")
                 
                 # Rate limiting
                 time.sleep(5)
@@ -152,6 +162,10 @@ def main():
     print("📹 Her döngüde 1 video yüklenecek")
     print("📊 Günde 8 video = Ayda 240 video")
     print("="*60)
+    
+    # Telegram bildirimi - bot başladı
+    telegram = TelegramNotifier()
+    telegram.notify_bot_started()
     
     # İlk çalıştırma
     print("\n🚀 İlk döngü başlıyor...")
