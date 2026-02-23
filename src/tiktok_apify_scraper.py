@@ -26,6 +26,57 @@ class TikTokApifyScraper:
         
         self.client = ApifyClient(api_token)
     
+    def is_turkish_content(self, text):
+        """Videonun Türkçe olup olmadığını kontrol et"""
+        if not text:
+            return False
+        
+        text_lower = text.lower()
+        
+        # Türkçe karakterler
+        turkish_chars = ['ğ', 'ü', 'ş', 'ı', 'ö', 'ç']
+        has_turkish_char = any(char in text_lower for char in turkish_chars)
+        
+        # Yaygın İngilizce kelimeler (TikTok'ta sık kullanılan)
+        english_words = [
+            'what', 'this', 'comedy', 'funny', 'video', 'look', 'watch',
+            'like', 'follow', 'subscribe', 'viral', 'trending', 'challenge',
+            'prank', 'reaction', 'part', 'episode', 'series', 'compilation',
+            'best', 'top', 'amazing', 'crazy', 'insane', 'epic', 'fail',
+            'win', 'moment', 'caught', 'camera', 'real', 'fake', 'gone',
+            'wrong', 'right', 'never', 'always', 'when', 'how', 'why',
+            'who', 'where', 'call', 'entered', 'chat', 'has', 'the'
+        ]
+        
+        # İngilizce kelime sayısı
+        english_count = sum(1 for word in english_words if f' {word} ' in f' {text_lower} ')
+        
+        # Türkçe karakter varsa kesinlikle Türkçe
+        if has_turkish_char:
+            return True
+        
+        # İngilizce kelime çoksa İngilizce
+        if english_count >= 2:
+            return False
+        
+        # Yaygın Türkçe kelimeler
+        turkish_words = [
+            'ben', 'sen', 'biz', 'siz', 'bu', 'şu', 'ne', 'nasıl', 'neden',
+            'kim', 'nerede', 'var', 'yok', 'için', 'ile', 'gibi', 'kadar',
+            'daha', 'çok', 'az', 'her', 'hiç', 'böyle', 'şöyle', 'öyle',
+            'ama', 'fakat', 'veya', 'ya', 'da', 'de', 'mi', 'mı', 'mu', 'mü',
+            'yaşında', 'akşam', 'sabah', 'gün', 'saat', 'dakika', 'saniye'
+        ]
+        
+        turkish_count = sum(1 for word in turkish_words if f' {word} ' in f' {text_lower} ')
+        
+        # Türkçe kelime varsa Türkçe
+        if turkish_count >= 1:
+            return True
+        
+        # Belirsiz durumda kabul et (hashtag'ler Türkçe olduğu için)
+        return True
+    
     def scrape_trending_videos(self, max_videos=10):
         """Hashtag'lerden video topla"""
         print("🔍 Apify ile TikTok videoları toplanıyor...")
@@ -51,8 +102,11 @@ class TikTokApifyScraper:
                 
                 print(f"   ⏳ Apify actor çalışıyor...")
                 
-                # Actor'ı çalıştır
-                run = self.client.actor("clockworks/tiktok-scraper").call(run_input=run_input)
+                # Actor'ı çalıştır (15 dakika timeout)
+                run = self.client.actor("clockworks/tiktok-scraper").call(
+                    run_input=run_input,
+                    timeout_secs=900  # 15 dakika timeout
+                )
                 
                 # Sonuçları al
                 videos = []
@@ -63,6 +117,14 @@ class TikTokApifyScraper:
                 random.shuffle(all_items)
                 
                 for item in all_items:
+                    # Video başlığını al
+                    title = (item.get('text') or item.get('desc') or 'TikTok Video')[:100]
+                    
+                    # Türkçe kontrolü yap
+                    if not self.is_turkish_content(title):
+                        print(f"   ⏭️ Atlandı (Yabancı): {title[:40]}...")
+                        continue
+                    
                     # Video URL'sini bul
                     video_url = None
                     
@@ -86,7 +148,7 @@ class TikTokApifyScraper:
                     video_info = {
                         'url': item.get('webVideoUrl', ''),
                         'video_url': video_url or '',
-                        'title': (item.get('text') or item.get('desc') or 'TikTok Video')[:100],
+                        'title': title,
                         'author': item.get('authorMeta', {}).get('name', 'Unknown'),
                         'likes': item.get('diggCount', 0),
                         'views': item.get('playCount', 0),
@@ -111,46 +173,70 @@ class TikTokApifyScraper:
         
         return all_videos[:max_videos]
     
-    def download_video(self, video_info):
-        """Videoyu indir"""
-        try:
-            if not video_info.get('video_url'):
-                print("❌ Video URL bulunamadı")
-                return None
-            
-            # Dosya adı
-            safe_title = "".join(c for c in video_info['title'] if c.isalnum() or c in (' ', '-', '_'))[:50]
-            filename = f"{safe_title}_{int(time.time())}.mp4"
-            filepath = self.download_path / filename
-            
-            print(f"⬇️ İndiriliyor: {filename}")
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://www.tiktok.com/'
-            }
-            
-            response = requests.get(video_info['video_url'], headers=headers, stream=True, timeout=60)
-            response.raise_for_status()
-            
-            total_size = int(response.headers.get('content-length', 0))
-            downloaded = 0
-            
-            with open(filepath, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-                    downloaded += len(chunk)
+    def download_video(self, video_info, max_retries=2):
+        """Videoyu indir (retry mekanizması ile)"""
+        for attempt in range(max_retries):
+            try:
+                if not video_info.get('video_url'):
+                    print("❌ Video URL bulunamadı")
+                    return None
+                
+                # Dosya adı
+                safe_title = "".join(c for c in video_info['title'] if c.isalnum() or c in (' ', '-', '_'))[:50]
+                filename = f"{safe_title}_{int(time.time())}.mp4"
+                filepath = self.download_path / filename
+                
+                print(f"⬇️ İndiriliyor: {filename} (Deneme {attempt + 1}/{max_retries})")
+                
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://www.tiktok.com/'
+                }
+                
+                response = requests.get(
+                    video_info['video_url'], 
+                    headers=headers, 
+                    stream=True, 
+                    timeout=120  # 2 dakika timeout
+                )
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                
+                with open(filepath, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        
+                        if total_size > 0:
+                            percent = (downloaded / total_size) * 100
+                            print(f"\r   İlerleme: {percent:.1f}%", end='', flush=True)
+                
+                print(f"\n✅ İndirildi: {filepath}")
+                return str(filepath)
+                
+            except requests.exceptions.Timeout:
+                print(f"\n⏱️ Timeout! Video indirme çok uzun sürdü.")
+                if attempt < max_retries - 1:
+                    print(f"   🔄 {attempt + 2}. deneme yapılıyor...")
+                    time.sleep(5)
+                    continue
+                else:
+                    print(f"   ❌ {max_retries} deneme başarısız, video atlanıyor.")
+                    return None
                     
-                    if total_size > 0:
-                        percent = (downloaded / total_size) * 100
-                        print(f"\r   İlerleme: {percent:.1f}%", end='', flush=True)
-            
-            print(f"\n✅ İndirildi: {filepath}")
-            return str(filepath)
-            
-        except Exception as e:
-            print(f"\n❌ İndirme hatası: {str(e)}")
-            return None
+            except Exception as e:
+                print(f"\n❌ İndirme hatası: {str(e)}")
+                if attempt < max_retries - 1:
+                    print(f"   🔄 {attempt + 2}. deneme yapılıyor...")
+                    time.sleep(5)
+                    continue
+                else:
+                    print(f"   ❌ {max_retries} deneme başarısız, video atlanıyor.")
+                    return None
+        
+        return None
 
 
 # Test
