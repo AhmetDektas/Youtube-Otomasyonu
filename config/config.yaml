@@ -3,8 +3,6 @@ tiktok:
   search_hashtags:
     - "komedi"
     - "mizah"
-    - "eğlence"
-    - "komik"
   min_likes: 10000
   max_videos_per_run: 5
   video_duration_max: 180  # saniye
@@ -47,6 +45,6 @@ youtube:
 # Genel Ayarlar
 general:
   download_path: "./data/videos"
-  check_interval: 3600  # saniye (1 saat)
+  check_interval: 10800  # saniye (3 saat)
   max_storage_gb: 10
   video_retention_days: 1  # Videoları 1 gün sonra sil (YouTube'a yüklendikten sonra)
