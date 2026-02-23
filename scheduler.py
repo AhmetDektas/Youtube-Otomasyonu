@@ -6,7 +6,7 @@ import yaml
 import time
 import schedule
 from datetime import datetime
-from src.tiktok_apify_scraper import TikTokApifyScraper
+from src.tiktok_hybrid_scraper import TikTokHybridScraper
 from src.youtube_uploader import YouTubeUploader
 from src.content_manager import ContentManager
 from src.title_generator import TitleGenerator
@@ -25,7 +25,7 @@ def run_automation():
             config = yaml.safe_load(f)
         
         # Modüller
-        scraper = TikTokApifyScraper(config)
+        scraper = TikTokHybridScraper(config)
         uploader = YouTubeUploader(config)
         content_manager = ContentManager()
         title_generator = TitleGenerator(config)
